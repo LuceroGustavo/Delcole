@@ -1,0 +1,6 @@
+# Copiá este archivo como application-local.properties (mismo nombre pero sin .example)
+# y reemplazá TU_CONTRASEÑA_DE_MYSQL por la contraseña de tu usuario root de MySQL.
+# application-local.properties no se sube a git (está en .gitignore).
+# Se carga solo porque en application.properties está spring.profiles.include=local
+
+spring.datasource.password=TU_CONTRASEÑA_DE_MYSQL

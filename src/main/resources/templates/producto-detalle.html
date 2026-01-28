@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${producto.nombre}">Producto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .btn-action { min-height: 52px; font-size: 1rem; font-weight: 600; }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-primary mb-3">
+        <div class="container-fluid">
+            <a class="navbar-brand" th:href="@{/home}">← Kiosco Delcole</a>
+        </div>
+    </nav>
+    <main class="container">
+        <div th:with="p=${producto}">
+            <h4 th:text="${p.nombre}">Nombre</h4>
+            <p th:if="${p.codigoBarra}" class="text-muted" th:text="'Código: ' + ${p.codigoBarra}">Código</p>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <p class="mb-1"><strong>Precio de venta:</strong> <span class="text-success fs-4" th:text="'$ ' + ${p.precioVenta}">$ 0</span></p>
+                    <p class="mb-1"><strong>Stock actual:</strong> <span th:text="${p.stockActual}" th:classappend="${p.stockBajo} ? 'text-danger fw-bold' : ''">0</span></p>
+                    <p th:if="${p.stockMinimo != null && p.stockMinimo > 0}" class="mb-0"><strong>Stock mínimo:</strong> <span th:text="${p.stockMinimo}">0</span></p>
+                </div>
+            </div>
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-success btn-action" data-action="sumar" th:data-id="${p.id}">➕ Sumar stock</button>
+                <button type="button" class="btn btn-warning btn-action" data-action="restar" th:data-id="${p.id}">➖ Restar stock (vender)</button>
+                <a th:href="@{/home}" class="btn btn-outline-secondary btn-action">Volver al listado</a>
+            </div>
+        </div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        document.querySelectorAll('[data-action]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const action = this.getAttribute('data-action');
+                const cantidad = prompt(action === 'sumar' ? '¿Cuántas unidades sumar?' : '¿Cuántas unidades vender?', '1');
+                if (cantidad == null || cantidad === '') return;
+                const n = parseInt(cantidad);
+                if (isNaN(n) || n < 1) { alert('Ingresá un número positivo.'); return; }
+                const url = action === 'sumar' ? '/api/productos/' + id + '/stock/sumar' : '/api/productos/' + id + '/stock/restar';
+                fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cantidad: n })
+                })
+                .then(function(r) {
+                    if (r.ok) location.reload();
+                    else return r.json().then(function(e) { alert(e.error || 'Error'); });
+                })
+                .catch(function() { alert('Error de conexión.'); });
+            });
+        });
+    </script>
+</body>
+</html>
