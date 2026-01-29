@@ -77,6 +77,9 @@
                 <div class="form-text mt-1">
                     Podés <strong>escanear</strong> el código o escribir, por ejemplo, <em>alfa</em> para ver todos los alfajores.
                 </div>
+                <div class="form-text mt-1 text-muted small">
+                    Si la cámara no lee bien: usá una app de escaneo (ej. <a href="https://play.google.com/store/apps/details?id=com.mobileappsshop.barcode" target="_blank" rel="noopener">Barcode Scanner</a>), copiá el código y pegálo acá.
+                </div>
                 <div id="mensaje" class="form-text text-danger mt-1" style="min-height: 1.5rem;"></div>
 
                 <!-- Resultados de búsqueda por nombre -->
@@ -123,6 +126,7 @@
                 <div>
                     <div class="fw-semibold">Escanear código de barras</div>
                     <div class="scanner-instruction">Apuntá la cámara al código. Se agregará automáticamente al carrito.</div>
+                    <div id="scannerMensaje" class="small mt-1" style="min-height: 1.2em;"></div>
                 </div>
                 <button id="btnCerrarScanner" type="button" class="btn btn-sm btn-light">
                     Cerrar
@@ -149,6 +153,7 @@
         const scannerOverlay = document.getElementById('scannerOverlay');
         const btnCerrarScanner = document.getElementById('btnCerrarScanner');
         const scannerViewport = document.getElementById('scannerViewport');
+        const scannerMensaje = document.getElementById('scannerMensaje');
 
         /** Carrito en memoria (solo frontend). */
         const carrito = [];
@@ -211,11 +216,12 @@
             actualizarVistaCarrito();
         }
 
+        /** Devuelve true si se agregó al carrito, false si no se encontró o hubo error. */
         async function agregarPorCodigo() {
             const codigo = codigoInput.value.trim();
             if (!codigo) {
                 mostrarMensaje('Ingresá un código de barras.');
-                return;
+                return false;
             }
             mostrarMensaje('');
 
@@ -223,11 +229,11 @@
                 const resp = await fetch(`/api/productos/codigo/${encodeURIComponent(codigo)}`);
                 if (resp.status === 404) {
                     mostrarMensaje('Producto no encontrado. Crealo desde Stock.');
-                    return;
+                    return false;
                 }
                 if (!resp.ok) {
                     mostrarMensaje('Error al buscar el producto.');
-                    return;
+                    return false;
                 }
                 const p = await resp.json();
                 agregarAlCarritoDesdeProducto(p);
@@ -236,9 +242,11 @@
                 actualizarVistaCarrito();
                 mostrarMensaje('Producto agregado al carrito.', false);
                 codigoInput.focus();
+                return true;
             } catch (e) {
                 console.error(e);
                 mostrarMensaje('Error de conexión con el servidor.');
+                return false;
             }
         }
 
@@ -348,13 +356,18 @@
                     type: "LiveStream",
                     target: scannerViewport,
                     constraints: {
-                        facingMode: "environment"
+                        facingMode: "environment",
+                        width: { ideal: 1280, min: 640 },
+                        height: { ideal: 720, min: 480 }
                     }
                 },
                 decoder: {
-                    readers: ["ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader", "code_128_reader"]
+                    readers: ["ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader", "code_128_reader"],
+                    multiple: false
                 },
-                locate: true
+                locate: true,
+                numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
+                frequency: 20
             }, function(err) {
                 if (err) {
                     console.error(err);
@@ -367,19 +380,42 @@
             });
 
             let ultimoCodigo = null;
+            let procesando = false;
             window.Quagga.offDetected();
-            window.Quagga.onDetected(function(result) {
+            window.Quagga.onDetected(async function(result) {
                 if (!result || !result.codeResult || !result.codeResult.code) return;
-                const codigo = result.codeResult.code;
+                let codigo = String(result.codeResult.code).trim();
+                if (!codigo) return;
 
                 // Evitar leer muchas veces seguidas el mismo código
                 if (codigo === ultimoCodigo) return;
+                if (procesando) return;
+                procesando = true;
                 ultimoCodigo = codigo;
 
                 codigoInput.value = codigo;
-                agregarPorCodigo();
-                // Esperar un poco y cerrar el escáner
-                setTimeout(detenerScanner, 500);
+                if (scannerMensaje) scannerMensaje.textContent = 'Buscando producto...';
+                if (scannerMensaje) scannerMensaje.style.color = '#fff';
+                try {
+                    var ok = await agregarPorCodigo();
+                    if (ok) {
+                        if (scannerMensaje) scannerMensaje.textContent = '¡Agregado! Cerrando...';
+                        if (scannerMensaje) scannerMensaje.style.color = '#90EE90';
+                        detenerScanner();
+                    } else {
+                        if (scannerMensaje) scannerMensaje.textContent = 'Producto no encontrado. Probá de nuevo o crealo desde Stock.';
+                        if (scannerMensaje) scannerMensaje.style.color = '#ffb3b3';
+                        setTimeout(function() { if (scannerMensaje) scannerMensaje.textContent = ''; }, 4000);
+                    }
+                } catch (e) {
+                    console.error(e);
+                    if (scannerMensaje) scannerMensaje.textContent = 'Error de conexión. Revisá la red.';
+                    if (scannerMensaje) scannerMensaje.style.color = '#ffb3b3';
+                    setTimeout(function() { if (scannerMensaje) scannerMensaje.textContent = ''; }, 4000);
+                }
+                procesando = false;
+                // Permitir leer el mismo código de nuevo después de 2 segundos
+                setTimeout(function() { ultimoCodigo = null; }, 2000);
             });
         }
 

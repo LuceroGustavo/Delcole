@@ -34,3 +34,7 @@ build/
 
 ### Contraseña MySQL (no subir a git) ###
 src/main/resources/application-local.properties
+
+### Herramientas (ejecutables descargados, no subir a git) ###
+tools/*.exe
+tools/*.zip

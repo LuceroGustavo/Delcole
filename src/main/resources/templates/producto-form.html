@@ -5,11 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${titulo}">Agregar producto</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .scanner-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1050;
+        }
+        .scanner-overlay.activo { display: flex; }
+        .scanner-modal {
+            background: #000;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 100%;
+            padding: 0.5rem;
+            color: #fff;
+        }
+        #scannerViewport { width: 100%; max-height: 50vh; }
+    </style>
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-dark bg-primary mb-3">
         <div class="container-fluid">
-            <a class="navbar-brand" th:href="@{/home}">← Kiosco Delcole</a>
+            <a class="navbar-brand" th:href="@{/productos}">← Productos</a>
         </div>
     </nav>
     <main class="container">
@@ -17,7 +38,11 @@
         <form th:action="@{/api/productos}" th:object="${producto}" method="post" id="formProducto">
             <div class="mb-3">
                 <label class="form-label">Código de barras (opcional)</label>
-                <input type="text" class="form-control form-control-lg" th:field="*{codigoBarra}" placeholder="Escanear o dejar vacío">
+                <div class="input-group">
+                    <input type="text" id="codigoBarra" class="form-control form-control-lg" th:field="*{codigoBarra}" placeholder="Escanear o escribir el código">
+                    <button type="button" id="btnEscanearCodigo" class="btn btn-outline-primary">📷 Escanear</button>
+                </div>
+                <div class="form-text small">Si la cámara no lee bien, usá una app de escaneo y pegá el código acá.</div>
             </div>
             <div class="mb-3">
                 <label class="form-label">Nombre *</label>
@@ -44,12 +69,26 @@
                 </div>
             </div>
             <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                <a th:href="@{/home}" class="btn btn-outline-secondary btn-lg">Cancelar</a>
+                <a th:href="@{/productos}" class="btn btn-outline-secondary btn-lg">Cancelar</a>
                 <button type="submit" class="btn btn-success btn-lg">Guardar</button>
             </div>
         </form>
     </main>
+
+    <!-- Overlay escáner para código de barras -->
+    <div id="scannerOverlay" class="scanner-overlay">
+        <div class="scanner-modal">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold">Escanear código de barras</span>
+                <button type="button" id="btnCerrarScanner" class="btn btn-sm btn-light">Cerrar</button>
+            </div>
+            <div id="scannerMensaje" class="small mb-1" style="min-height: 1.2em;"></div>
+            <div id="scannerViewport"></div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.js"></script>
     <script>
         document.getElementById('formProducto').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -69,8 +108,83 @@
                 body: JSON.stringify(data)
             })
             .then(r => r.ok ? r.json() : Promise.reject(r))
-            .then(() => { window.location.href = '/home'; })
+            .then(() => { window.location.href = '/productos'; })
             .catch(() => alert('Error al guardar. Revisá los datos.'));
+        });
+
+        // --- Escanear código de barras en nuevo producto ---
+        const codigoInput = document.getElementById('codigoBarra');
+        const btnEscanear = document.getElementById('btnEscanearCodigo');
+        const scannerOverlay = document.getElementById('scannerOverlay');
+        const btnCerrarScanner = document.getElementById('btnCerrarScanner');
+        const scannerViewport = document.getElementById('scannerViewport');
+        const scannerMensaje = document.getElementById('scannerMensaje');
+        let scannerActivo = false;
+
+        function detenerScanner() {
+            if (window.Quagga && scannerActivo) {
+                window.Quagga.stop();
+                scannerActivo = false;
+            }
+            scannerOverlay.classList.remove('activo');
+        }
+
+        function iniciarScanner() {
+            if (!window.Quagga) {
+                alert('No se pudo cargar el lector de códigos. Usá HTTPS o localhost.');
+                return;
+            }
+            scannerOverlay.classList.add('activo');
+            if (scannerMensaje) scannerMensaje.textContent = '';
+
+            window.Quagga.init({
+                inputStream: {
+                    type: 'LiveStream',
+                    target: scannerViewport,
+                    constraints: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280, min: 640 },
+                        height: { ideal: 720, min: 480 }
+                    }
+                },
+                decoder: {
+                    readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader', 'code_128_reader'],
+                    multiple: false
+                },
+                locate: true,
+                numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
+                frequency: 20
+            }, function(err) {
+                if (err) {
+                    console.error(err);
+                    if (scannerMensaje) scannerMensaje.textContent = 'No se pudo iniciar la cámara.';
+                    detenerScanner();
+                    return;
+                }
+                window.Quagga.start();
+                scannerActivo = true;
+            });
+
+            let ultimoCodigo = null;
+            window.Quagga.offDetected();
+            window.Quagga.onDetected(function(result) {
+                if (!result || !result.codeResult || !result.codeResult.code) return;
+                var codigo = String(result.codeResult.code).trim();
+                if (!codigo || codigo === ultimoCodigo) return;
+                ultimoCodigo = codigo;
+
+                codigoInput.value = codigo;
+                if (scannerMensaje) scannerMensaje.textContent = 'Código leído: ' + codigo;
+                if (scannerMensaje) scannerMensaje.style.color = '#90EE90';
+                detenerScanner();
+                setTimeout(function() { ultimoCodigo = null; }, 2000);
+            });
+        }
+
+        btnEscanear.addEventListener('click', iniciarScanner);
+        btnCerrarScanner.addEventListener('click', detenerScanner);
+        scannerOverlay.addEventListener('click', function(e) {
+            if (e.target === scannerOverlay) detenerScanner();
         });
     </script>
 </body>
