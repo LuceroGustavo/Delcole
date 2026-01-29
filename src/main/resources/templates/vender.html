@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${titulo} + ' - Kiosco Delcole'">Vender - Kiosco Delcole</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-bottom: 2rem;
+            background-color: #f8f9fa;
+        }
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .cart-total {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .code-input {
+            font-size: 1.2rem;
+            height: 3rem;
+        }
+        .scanner-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1050;
+        }
+        .scanner-modal {
+            background: #000;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 100%;
+            padding: 0.5rem;
+            color: #fff;
+        }
+        #scannerViewport {
+            width: 100%;
+            max-height: 60vh;
+        }
+        .scanner-header {
+            padding: 0.25rem 0.5rem 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .scanner-instruction {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-success">
+        <div class="container-fluid">
+            <a th:href="@{/}" class="navbar-brand mb-0 h1">← Delcole</a>
+            <span class="navbar-text text-white">🛒 Vender</span>
+        </div>
+    </nav>
+    <main class="container mt-3">
+        <!-- Entrada de código de barras -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <label for="codigoBarra" class="form-label fw-semibold">Código de barras o nombre</label>
+                <div class="input-group">
+                    <input id="codigoBarra" type="text" class="form-control code-input" placeholder="Escaneá el código o escribí parte del nombre">
+                    <button id="btnAgregar" class="btn btn-success">Agregar</button>
+                </div>
+                <button id="btnEscanear" type="button" class="btn btn-outline-success btn-sm mt-2">
+                    📷 Escanear con cámara
+                </button>
+                <div class="form-text mt-1">
+                    Podés <strong>escanear</strong> el código o escribir, por ejemplo, <em>alfa</em> para ver todos los alfajores.
+                </div>
+                <div id="mensaje" class="form-text text-danger mt-1" style="min-height: 1.5rem;"></div>
+
+                <!-- Resultados de búsqueda por nombre -->
+                <div id="sugerencias" class="list-group mt-2"></div>
+            </div>
+        </div>
+
+        <!-- Carrito -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Carrito</span>
+                <span class="cart-total">Total: $ <span id="total">0.00</span></span>
+            </div>
+            <div class="card-body p-0">
+                <div id="carritoVacio" class="p-3 text-muted">
+                    No hay productos en el carrito. Escaneá o escribí un código para empezar.
+                </div>
+                <table id="tablaCarrito" class="table mb-0 d-none">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-center">Cant.</th>
+                            <th class="text-end">Precio</th>
+                            <th class="text-end">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Botón Cobrar -->
+        <div class="d-grid gap-2 mb-4">
+            <button id="btnCobrar" class="btn btn-lg btn-success" disabled>
+                Cobrar
+            </button>
+        </div>
+    </main>
+
+    <!-- Overlay del escáner -->
+    <div id="scannerOverlay" class="scanner-overlay">
+        <div class="scanner-modal">
+            <div class="scanner-header">
+                <div>
+                    <div class="fw-semibold">Escanear código de barras</div>
+                    <div class="scanner-instruction">Apuntá la cámara al código. Se agregará automáticamente al carrito.</div>
+                </div>
+                <button id="btnCerrarScanner" type="button" class="btn btn-sm btn-light">
+                    Cerrar
+                </button>
+            </div>
+            <div id="scannerViewport"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Quagga2 para escaneo de códigos de barras -->
+    <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.js"></script>
+    <script>
+        const codigoInput = document.getElementById('codigoBarra');
+        const btnAgregar = document.getElementById('btnAgregar');
+        const btnCobrar = document.getElementById('btnCobrar');
+        const btnEscanear = document.getElementById('btnEscanear');
+        const mensaje = document.getElementById('mensaje');
+        const tablaCarrito = document.getElementById('tablaCarrito');
+        const tbody = tablaCarrito.querySelector('tbody');
+        const carritoVacio = document.getElementById('carritoVacio');
+        const totalSpan = document.getElementById('total');
+        const sugerencias = document.getElementById('sugerencias');
+        const scannerOverlay = document.getElementById('scannerOverlay');
+        const btnCerrarScanner = document.getElementById('btnCerrarScanner');
+        const scannerViewport = document.getElementById('scannerViewport');
+
+        /** Carrito en memoria (solo frontend). */
+        const carrito = [];
+        let scannerActivo = false;
+
+        function actualizarVistaCarrito() {
+            if (carrito.length === 0) {
+                carritoVacio.classList.remove('d-none');
+                tablaCarrito.classList.add('d-none');
+                btnCobrar.disabled = true;
+                totalSpan.textContent = '0.00';
+                return;
+            }
+
+            carritoVacio.classList.add('d-none');
+            tablaCarrito.classList.remove('d-none');
+            btnCobrar.disabled = false;
+
+            tbody.innerHTML = '';
+            let total = 0;
+
+            carrito.forEach(item => {
+                const subtotal = item.precioVenta * item.cantidad;
+                total += subtotal;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.nombre}</td>
+                    <td class="text-center">${item.cantidad}</td>
+                    <td class="text-end">$ ${item.precioVenta.toFixed(2)}</td>
+                    <td class="text-end">$ ${subtotal.toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            totalSpan.textContent = total.toFixed(2);
+        }
+
+        function mostrarMensaje(texto, esError = true) {
+            mensaje.textContent = texto || '';
+            mensaje.classList.toggle('text-danger', esError);
+            mensaje.classList.toggle('text-success', !esError);
+        }
+
+        function limpiarSugerencias() {
+            sugerencias.innerHTML = '';
+        }
+
+        function agregarAlCarritoDesdeProducto(p) {
+            const existente = carrito.find(i => i.id === p.id);
+            if (existente) {
+                existente.cantidad += 1;
+            } else {
+                carrito.push({
+                    id: p.id,
+                    nombre: p.nombre,
+                    precioVenta: parseFloat(p.precioVenta),
+                    cantidad: 1
+                });
+            }
+            actualizarVistaCarrito();
+        }
+
+        async function agregarPorCodigo() {
+            const codigo = codigoInput.value.trim();
+            if (!codigo) {
+                mostrarMensaje('Ingresá un código de barras.');
+                return;
+            }
+            mostrarMensaje('');
+
+            try {
+                const resp = await fetch(`/api/productos/codigo/${encodeURIComponent(codigo)}`);
+                if (resp.status === 404) {
+                    mostrarMensaje('Producto no encontrado. Crealo desde Stock.');
+                    return;
+                }
+                if (!resp.ok) {
+                    mostrarMensaje('Error al buscar el producto.');
+                    return;
+                }
+                const p = await resp.json();
+                agregarAlCarritoDesdeProducto(p);
+                codigoInput.value = '';
+                limpiarSugerencias();
+                actualizarVistaCarrito();
+                mostrarMensaje('Producto agregado al carrito.', false);
+                codigoInput.focus();
+            } catch (e) {
+                console.error(e);
+                mostrarMensaje('Error de conexión con el servidor.');
+            }
+        }
+
+        async function cobrar() {
+            if (carrito.length === 0) return;
+
+            const items = carrito.map(i => ({
+                productoId: i.id,
+                cantidad: i.cantidad
+            }));
+
+            try {
+                const resp = await fetch('/api/ventas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(items)
+                });
+
+                const data = await resp.json().catch(() => ({}));
+
+                if (!resp.ok) {
+                    mostrarMensaje(data.error || 'No se pudo registrar la venta.');
+                    return;
+                }
+
+                alert(`Venta registrada.\nTotal: $ ${data.total ?? ''}`);
+                carrito.length = 0;
+                actualizarVistaCarrito();
+                mostrarMensaje('');
+            } catch (e) {
+                console.error(e);
+                mostrarMensaje('Error de conexión al cobrar.');
+            }
+        }
+
+        async function buscarPorNombre(termino) {
+            limpiarSugerencias();
+            if (!termino || termino.length < 2) {
+                return;
+            }
+            try {
+                const resp = await fetch(`/api/productos?nombre=${encodeURIComponent(termino)}`);
+                if (!resp.ok) return;
+                const productos = await resp.json();
+                if (!Array.isArray(productos) || productos.length === 0) return;
+
+                productos.forEach(p => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                    btn.innerHTML = `
+                        <div>
+                            <div class="fw-semibold">${p.nombre}</div>
+                            <div class="small text-muted" ${'codigoBarra' in p && p.codigoBarra ? '' : 'style="display:none;"'}>
+                                Código: ${p.codigoBarra || ''}
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-success">$ ${parseFloat(p.precioVenta).toFixed(2)}</div>
+                        </div>
+                    `;
+                    btn.addEventListener('click', () => {
+                        agregarAlCarritoDesdeProducto(p);
+                        codigoInput.value = '';
+                        limpiarSugerencias();
+                        mostrarMensaje('Producto agregado al carrito.', false);
+                        codigoInput.focus();
+                    });
+                    sugerencias.appendChild(btn);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        btnAgregar.addEventListener('click', agregarPorCodigo);
+        codigoInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                agregarPorCodigo();
+            }
+        });
+        codigoInput.addEventListener('input', (e) => {
+            const valor = e.target.value.trim();
+            buscarPorNombre(valor);
+        });
+
+        // --- Escaneo con cámara usando Quagga2 ---
+        function detenerScanner() {
+            if (window.Quagga && scannerActivo) {
+                window.Quagga.stop();
+                scannerActivo = false;
+            }
+            scannerOverlay.style.display = 'none';
+        }
+
+        function iniciarScanner() {
+            if (!window.Quagga) {
+                mostrarMensaje('No se pudo cargar el lector de código de barras.');
+                return;
+            }
+
+            scannerOverlay.style.display = 'flex';
+
+            window.Quagga.init({
+                inputStream: {
+                    type: "LiveStream",
+                    target: scannerViewport,
+                    constraints: {
+                        facingMode: "environment"
+                    }
+                },
+                decoder: {
+                    readers: ["ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader", "code_128_reader"]
+                },
+                locate: true
+            }, function(err) {
+                if (err) {
+                    console.error(err);
+                    mostrarMensaje('No se pudo iniciar la cámara. Verificá permisos y que estés usando HTTPS o localhost.');
+                    detenerScanner();
+                    return;
+                }
+                window.Quagga.start();
+                scannerActivo = true;
+            });
+
+            let ultimoCodigo = null;
+            window.Quagga.offDetected();
+            window.Quagga.onDetected(function(result) {
+                if (!result || !result.codeResult || !result.codeResult.code) return;
+                const codigo = result.codeResult.code;
+
+                // Evitar leer muchas veces seguidas el mismo código
+                if (codigo === ultimoCodigo) return;
+                ultimoCodigo = codigo;
+
+                codigoInput.value = codigo;
+                agregarPorCodigo();
+                // Esperar un poco y cerrar el escáner
+                setTimeout(detenerScanner, 500);
+            });
+        }
+
+        btnEscanear.addEventListener('click', iniciarScanner);
+        btnCerrarScanner.addEventListener('click', detenerScanner);
+        scannerOverlay.addEventListener('click', (e) => {
+            if (e.target === scannerOverlay) {
+                detenerScanner();
+            }
+        });
+        btnCobrar.addEventListener('click', cobrar);
+
+        // Foco inicial en el campo de código
+        window.addEventListener('load', () => {
+            codigoInput.focus();
+        });
+    </script>
+</body>
+</html>

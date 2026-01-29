@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${titulo} + ' - Kiosco Delcole'">Finanzas - Kiosco Delcole</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-bottom: 2rem;
+            background-color: #f8f9fa;
+        }
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .resumen-valor {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-info">
+        <div class="container-fluid">
+            <a th:href="@{/}" class="navbar-brand mb-0 h1 text-dark">← Delcole</a>
+        </div>
+    </nav>
+    <main class="container mt-4">
+        <h4 class="mb-3">📊 Finanzas</h4>
+
+        <!-- Filtros de fecha -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label for="fechaDesde" class="form-label small">Desde</label>
+                        <input type="date" id="fechaDesde" class="form-control" />
+                    </div>
+                    <div class="col-md-4">
+                        <label for="fechaHasta" class="form-label small">Hasta</label>
+                        <input type="date" id="fechaHasta" class="form-control" />
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button id="btnMesActual" class="btn btn-outline-secondary btn-sm w-100">Mes actual</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resumen financiero -->
+        <div class="card mb-4">
+            <div class="card-header fw-semibold">Resumen del período</div>
+            <div class="card-body">
+                <div id="resumenCargando" class="text-muted">Cargando...</div>
+                <div id="resumen" class="d-none">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="text-muted small">Ventas</div>
+                            <div class="resumen-valor text-success">$ <span id="ventasPeriodo">0.00</span></div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="text-muted small">Gastos</div>
+                            <div class="resumen-valor text-danger">$ <span id="gastosPeriodo">0.00</span></div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="text-muted small">Ganancia neta</div>
+                            <div class="resumen-valor" id="gananciaNeta">$ <span>0.00</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="resumenError" class="alert alert-danger d-none"></div>
+            </div>
+        </div>
+
+        <!-- Formulario para agregar gasto -->
+        <div class="card mb-4">
+            <div class="card-header fw-semibold">Agregar gasto</div>
+            <div class="card-body">
+                <form id="formGasto">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label for="gastoFecha" class="form-label small">Fecha</label>
+                            <input type="date" id="gastoFecha" class="form-control" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label for="gastoConcepto" class="form-label small">Concepto</label>
+                            <input type="text" id="gastoConcepto" class="form-control" placeholder="Ej: Luz, Papel higiénico" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label for="gastoMonto" class="form-label small">Monto</label>
+                            <input type="number" id="gastoMonto" class="form-control" step="0.01" min="0" placeholder="0.00" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label for="gastoTipo" class="form-label small">Tipo</label>
+                            <select id="gastoTipo" class="form-select" required>
+                                <option value="INSUMO">Insumo</option>
+                                <option value="SERVICIO">Servicio</option>
+                                <option value="CANON">Canon</option>
+                                <option value="OTRO">Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">➕</button>
+                        </div>
+                    </div>
+                </form>
+                <div id="gastoMensaje" class="mt-2"></div>
+            </div>
+        </div>
+
+        <!-- Listado de gastos -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Gastos del período</span>
+                <button id="btnRecargarGastos" class="btn btn-sm btn-outline-secondary">🔄</button>
+            </div>
+            <div class="card-body p-0">
+                <div id="gastosCargando" class="p-3 text-muted">Cargando gastos...</div>
+                <div id="gastosVacio" class="p-3 text-muted d-none">No hay gastos registrados para este período.</div>
+                <div id="gastosError" class="alert alert-danger m-3 d-none"></div>
+                <table id="tablaGastos" class="table mb-0 d-none">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Concepto</th>
+                            <th>Tipo</th>
+                            <th class="text-end">Monto</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const fechaDesde = document.getElementById('fechaDesde');
+        const fechaHasta = document.getElementById('fechaHasta');
+        const btnMesActual = document.getElementById('btnMesActual');
+        const resumenCargando = document.getElementById('resumenCargando');
+        const resumen = document.getElementById('resumen');
+        const resumenError = document.getElementById('resumenError');
+        const ventasSpan = document.getElementById('ventasPeriodo');
+        const gastosSpan = document.getElementById('gastosPeriodo');
+        const gananciaNetaDiv = document.getElementById('gananciaNeta');
+        const formGasto = document.getElementById('formGasto');
+        const gastoFecha = document.getElementById('gastoFecha');
+        const gastoConcepto = document.getElementById('gastoConcepto');
+        const gastoMonto = document.getElementById('gastoMonto');
+        const gastoTipo = document.getElementById('gastoTipo');
+        const gastoMensaje = document.getElementById('gastoMensaje');
+        const gastosCargando = document.getElementById('gastosCargando');
+        const gastosVacio = document.getElementById('gastosVacio');
+        const gastosError = document.getElementById('gastosError');
+        const tablaGastos = document.getElementById('tablaGastos');
+        const tbodyGastos = tablaGastos.querySelector('tbody');
+        const btnRecargarGastos = document.getElementById('btnRecargarGastos');
+
+        function hoy() {
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+
+        function inicioMes() {
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
+        }
+
+        function formatearNumero(valor) {
+            if (typeof valor === 'number') {
+                return valor.toFixed(2);
+            }
+            if (typeof valor === 'string') {
+                return parseFloat(valor).toFixed(2);
+            }
+            return '0.00';
+        }
+
+        function formatearFecha(fecha) {
+            if (!fecha) return '';
+            const d = new Date(fecha + 'T00:00:00');
+            const dia = String(d.getDate()).padStart(2, '0');
+            const mes = String(d.getMonth() + 1).padStart(2, '0');
+            const anio = d.getFullYear();
+            return `${dia}/${mes}/${anio}`;
+        }
+
+        function nombreTipo(tipo) {
+            const map = {
+                'INSUMO': 'Insumo',
+                'SERVICIO': 'Servicio',
+                'CANON': 'Canon',
+                'OTRO': 'Otro'
+            };
+            return map[tipo] || tipo;
+        }
+
+        async function cargarResumen() {
+            resumenCargando.classList.remove('d-none');
+            resumen.classList.add('d-none');
+            resumenError.classList.add('d-none');
+
+            const desde = fechaDesde.value || inicioMes();
+            const hasta = fechaHasta.value || hoy();
+
+            try {
+                const resp = await fetch(`/api/finanzas/resumen?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`);
+                if (!resp.ok) {
+                    throw new Error('Error al cargar el resumen');
+                }
+                const data = await resp.json();
+
+                resumenCargando.classList.add('d-none');
+                resumen.classList.remove('d-none');
+                ventasSpan.textContent = formatearNumero(data.ventasPeriodo);
+                gastosSpan.textContent = formatearNumero(data.gastosPeriodo);
+                const ganancia = parseFloat(formatearNumero(data.gananciaNeta));
+                gananciaNetaDiv.innerHTML = `$ <span>${formatearNumero(data.gananciaNeta)}</span>`;
+                gananciaNetaDiv.className = 'resumen-valor ' + (ganancia >= 0 ? 'text-success' : 'text-danger');
+            } catch (e) {
+                resumenCargando.classList.add('d-none');
+                resumenError.textContent = e.message || 'No se pudo cargar el resumen.';
+                resumenError.classList.remove('d-none');
+            }
+        }
+
+        async function cargarGastos() {
+            gastosCargando.classList.remove('d-none');
+            gastosVacio.classList.add('d-none');
+            gastosError.classList.add('d-none');
+            tablaGastos.classList.add('d-none');
+            tbodyGastos.innerHTML = '';
+
+            const desde = fechaDesde.value || inicioMes();
+            const hasta = fechaHasta.value || hoy();
+
+            try {
+                const resp = await fetch(`/api/gastos?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`);
+                if (!resp.ok) {
+                    throw new Error('Error al cargar los gastos');
+                }
+                const gastos = await resp.json();
+
+                gastosCargando.classList.add('d-none');
+
+                if (!Array.isArray(gastos) || gastos.length === 0) {
+                    gastosVacio.classList.remove('d-none');
+                    return;
+                }
+
+                gastos.forEach(g => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${formatearFecha(g.fecha)}</td>
+                        <td>${g.concepto || ''}</td>
+                        <td><span class="badge bg-secondary">${nombreTipo(g.tipo)}</span></td>
+                        <td class="text-end">$ ${formatearNumero(g.monto)}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarGasto(${g.id})">🗑️</button>
+                        </td>
+                    `;
+                    tbodyGastos.appendChild(tr);
+                });
+
+                tablaGastos.classList.remove('d-none');
+            } catch (e) {
+                gastosCargando.classList.add('d-none');
+                gastosError.textContent = e.message || 'No se pudieron cargar los gastos.';
+                gastosError.classList.remove('d-none');
+            }
+        }
+
+        async function eliminarGasto(id) {
+            if (!confirm('¿Eliminar este gasto?')) return;
+            try {
+                const resp = await fetch(`/api/gastos/${id}`, { method: 'DELETE' });
+                if (!resp.ok) {
+                    throw new Error('No se pudo eliminar el gasto');
+                }
+                cargarGastos();
+                cargarResumen();
+            } catch (e) {
+                alert(e.message || 'Error al eliminar');
+            }
+        }
+
+        window.eliminarGasto = eliminarGasto;
+
+        formGasto.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            gastoMensaje.innerHTML = '';
+
+            const gasto = {
+                fecha: gastoFecha.value || hoy(),
+                concepto: gastoConcepto.value.trim(),
+                monto: parseFloat(gastoMonto.value),
+                tipo: gastoTipo.value
+            };
+
+            if (!gasto.concepto || gasto.monto <= 0) {
+                gastoMensaje.innerHTML = '<div class="alert alert-danger">Completá todos los campos correctamente.</div>';
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/gastos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(gasto)
+                });
+
+                if (!resp.ok) {
+                    throw new Error('No se pudo guardar el gasto');
+                }
+
+                gastoMensaje.innerHTML = '<div class="alert alert-success">Gasto guardado correctamente.</div>';
+                formGasto.reset();
+                gastoFecha.value = hoy();
+                cargarGastos();
+                cargarResumen();
+            } catch (e) {
+                gastoMensaje.innerHTML = `<div class="alert alert-danger">${e.message || 'Error al guardar'}</div>`;
+            }
+        });
+
+        btnMesActual.addEventListener('click', () => {
+            fechaDesde.value = inicioMes();
+            fechaHasta.value = hoy();
+            cargarResumen();
+            cargarGastos();
+        });
+
+        fechaDesde.addEventListener('change', () => {
+            cargarResumen();
+            cargarGastos();
+        });
+
+        fechaHasta.addEventListener('change', () => {
+            cargarResumen();
+            cargarGastos();
+        });
+
+        btnRecargarGastos.addEventListener('click', () => {
+            cargarGastos();
+        });
+
+        gastoFecha.value = hoy();
+        fechaDesde.value = inicioMes();
+        fechaHasta.value = hoy();
+
+        window.addEventListener('load', () => {
+            cargarResumen();
+            cargarGastos();
+        });
+    </script>
+</body>
+</html>

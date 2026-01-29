@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${titulo} + ' - Kiosco Delcole'">Cierre de caja - Kiosco Delcole</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-bottom: 2rem;
+            background-color: #f8f9fa;
+        }
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .resumen-total {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-warning">
+        <div class="container-fluid">
+            <a th:href="@{/}" class="navbar-brand mb-0 h1 text-dark">← Delcole</a>
+        </div>
+    </nav>
+    <main class="container mt-4">
+        <h4 class="mb-3">💰 Cierre de caja</h4>
+
+        <!-- Fecha -->
+        <div class="mb-3">
+            <label for="fecha" class="form-label">Fecha</label>
+            <input type="date" id="fecha" class="form-control" />
+        </div>
+
+        <!-- Resumen del día -->
+        <div class="card mb-4">
+            <div class="card-header fw-semibold">Resumen del día</div>
+            <div class="card-body">
+                <div id="cargando" class="text-muted">Cargando...</div>
+                <div id="resumen" class="d-none">
+                    <p class="mb-1"><strong>Total vendido:</strong></p>
+                    <p class="resumen-total text-success mb-3">$ <span id="totalVendido">0.00</span></p>
+                    <p class="mb-0"><strong>Cantidad de ventas:</strong> <span id="cantidadVentas">0</span></p>
+                </div>
+                <div id="error" class="alert alert-danger d-none" role="alert"></div>
+            </div>
+        </div>
+
+        <!-- Detalle de ventas del día -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Detalle de ventas del día</span>
+                <button id="btnToggleDetalle" class="btn btn-sm btn-outline-secondary">
+                    Ver detalle
+                </button>
+            </div>
+            <div class="card-body p-0" id="detalleContainer" style="display: none;">
+                <div id="detalleCargando" class="p-3 text-muted">Cargando ventas...</div>
+                <div id="detalleError" class="alert alert-danger m-3 d-none"></div>
+                <div id="detalleVacio" class="p-3 text-muted d-none">
+                    No hay ventas registradas para esta fecha.
+                </div>
+                <div id="detalleContenido" class="d-none">
+                    <ul class="list-group list-group-flush" id="listaVentas"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control de precios -->
+        <div class="d-grid gap-2">
+            <a th:href="@{/productos}" class="btn btn-outline-primary btn-lg">
+                📋 Control de precios (ver productos)
+            </a>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const fechaInput = document.getElementById('fecha');
+        const cargando = document.getElementById('cargando');
+        const resumen = document.getElementById('resumen');
+        const errorDiv = document.getElementById('error');
+        const totalVendidoSpan = document.getElementById('totalVendido');
+        const cantidadVentasSpan = document.getElementById('cantidadVentas');
+
+        const btnToggleDetalle = document.getElementById('btnToggleDetalle');
+        const detalleContainer = document.getElementById('detalleContainer');
+        const detalleCargando = document.getElementById('detalleCargando');
+        const detalleError = document.getElementById('detalleError');
+        const detalleVacio = document.getElementById('detalleVacio');
+        const detalleContenido = document.getElementById('detalleContenido');
+        const listaVentas = document.getElementById('listaVentas');
+
+        function hoy() {
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+
+        fechaInput.value = hoy();
+
+        async function cargarResumen() {
+            cargando.classList.remove('d-none');
+            resumen.classList.add('d-none');
+            errorDiv.classList.add('d-none');
+
+            const fecha = fechaInput.value || hoy();
+
+            try {
+                const resp = await fetch('/api/caja/resumen?fecha=' + encodeURIComponent(fecha));
+                if (!resp.ok) {
+                    throw new Error('Error al cargar el resumen');
+                }
+                const data = await resp.json();
+
+                cargando.classList.add('d-none');
+                resumen.classList.remove('d-none');
+                totalVendidoSpan.textContent = typeof data.totalVendido === 'number'
+                    ? data.totalVendido.toFixed(2)
+                    : (data.totalVendido != null ? String(data.totalVendido) : '0.00');
+                cantidadVentasSpan.textContent = data.cantidadVentas ?? 0;
+            } catch (e) {
+                cargando.classList.add('d-none');
+                errorDiv.textContent = e.message || 'No se pudo cargar el resumen.';
+                errorDiv.classList.remove('d-none');
+            }
+        }
+
+        async function cargarDetalleVentas() {
+            detalleCargando.classList.remove('d-none');
+            detalleError.classList.add('d-none');
+            detalleVacio.classList.add('d-none');
+            detalleContenido.classList.add('d-none');
+            listaVentas.innerHTML = '';
+
+            const fecha = fechaInput.value || hoy();
+
+            try {
+                const resp = await fetch('/api/caja/ventas?fecha=' + encodeURIComponent(fecha));
+                if (!resp.ok) {
+                    throw new Error('Error al cargar el detalle de ventas');
+                }
+                const ventas = await resp.json();
+
+                detalleCargando.classList.add('d-none');
+
+                if (!Array.isArray(ventas) || ventas.length === 0) {
+                    detalleVacio.classList.remove('d-none');
+                    return;
+                }
+
+                function formatearFechaHora(iso) {
+                    if (!iso) return '';
+                    try {
+                        const d = new Date(iso);
+                        const dia = String(d.getDate()).padStart(2, '0');
+                        const mes = String(d.getMonth() + 1).padStart(2, '0');
+                        const anio = d.getFullYear();
+                        const h = String(d.getHours()).padStart(2, '0');
+                        const min = String(d.getMinutes()).padStart(2, '0');
+                        return `${dia}/${mes}/${anio} ${h}:${min}`;
+                    } catch (e) {
+                        return iso;
+                    }
+                }
+
+                ventas.forEach(v => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+
+                    const fechaHora = formatearFechaHora(v.fechaHora);
+                    const total = typeof v.total === 'number'
+                        ? v.total.toFixed(2)
+                        : (v.total != null ? String(v.total) : '0.00');
+                    const items = Array.isArray(v.items) ? v.items : [];
+
+                    const lineasProductos = items.map(it => {
+                        const nombre = it.productoNombre ?? 'Producto';
+                        const cant = it.cantidad ?? 0;
+                        const precioNum = typeof it.precioUnitario === 'number' ? it.precioUnitario : (parseFloat(it.precioUnitario) || 0);
+                        const precio = precioNum.toFixed(2);
+                        const subtotal = (precioNum * cant).toFixed(2);
+                        return `<div class="d-flex justify-content-between py-1 border-bottom border-light"><span>${nombre} x${cant}</span><span>$ ${precio} c/u → $ ${subtotal}</span></div>`;
+                    }).join('');
+
+                    li.innerHTML = `
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>Venta #${v.id ?? ''}</strong>
+                                    <div class="small text-muted">${fechaHora}</div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="fw-bold text-success">Total: $ ${total}</span>
+                                </div>
+                            </div>
+                            <div class="mt-2 ps-2 small">
+                                ${lineasProductos || '<span class="text-muted">Sin ítems</span>'}
+                            </div>
+                        </div>
+                    `;
+                    listaVentas.appendChild(li);
+                });
+
+                detalleContenido.classList.remove('d-none');
+            } catch (e) {
+                detalleCargando.classList.add('d-none');
+                detalleError.textContent = e.message || 'No se pudo cargar el detalle de ventas.';
+                detalleError.classList.remove('d-none');
+            }
+        }
+
+        fechaInput.addEventListener('change', () => {
+            cargarResumen();
+            if (detalleContainer.style.display !== 'none') {
+                cargarDetalleVentas();
+            }
+        });
+
+        btnToggleDetalle.addEventListener('click', () => {
+            const visible = detalleContainer.style.display !== 'none';
+            if (visible) {
+                detalleContainer.style.display = 'none';
+                btnToggleDetalle.textContent = 'Ver detalle';
+            } else {
+                detalleContainer.style.display = 'block';
+                btnToggleDetalle.textContent = 'Ocultar detalle';
+                cargarDetalleVentas();
+            }
+        });
+
+        window.addEventListener('load', () => {
+            cargarResumen();
+        });
+    </script>
+</body>
+</html>

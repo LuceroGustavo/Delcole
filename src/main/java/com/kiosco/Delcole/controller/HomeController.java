@@ -1,13 +1,8 @@
 package com.kiosco.Delcole.controller;
 
-import java.util.List;
-
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-
-import com.kiosco.Delcole.model.Producto;
-import com.kiosco.Delcole.service.ProductoService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,14 +10,34 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class HomeController {
 
-    private final ProductoService productoService;
-
     @GetMapping({"/", "/home"})
     public String home(Model model) {
-        List<Producto> productos = productoService.listarActivos();
-        model.addAttribute("productos", productos);
         model.addAttribute("titulo", "Inicio");
         return "home";
+    }
+
+    @GetMapping("/vender")
+    public String vender(Model model) {
+        model.addAttribute("titulo", "Vender");
+        return "vender";
+    }
+
+    @GetMapping("/stock")
+    public String stock(Model model) {
+        model.addAttribute("titulo", "Stock");
+        return "stock";
+    }
+
+    @GetMapping("/caja")
+    public String caja(Model model) {
+        model.addAttribute("titulo", "Cierre de caja");
+        return "caja";
+    }
+
+    @GetMapping("/finanzas")
+    public String finanzas(Model model) {
+        model.addAttribute("titulo", "Finanzas");
+        return "finanzas";
     }
 
     @GetMapping("/escanear")

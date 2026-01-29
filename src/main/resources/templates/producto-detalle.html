@@ -12,7 +12,7 @@
 <body class="bg-light">
     <nav class="navbar navbar-dark bg-primary mb-3">
         <div class="container-fluid">
-            <a class="navbar-brand" th:href="@{/home}">← Kiosco Delcole</a>
+            <a class="navbar-brand" th:href="@{/productos}">← Productos</a>
         </div>
     </nav>
     <main class="container">
@@ -29,7 +29,7 @@
             <div class="d-grid gap-2">
                 <button type="button" class="btn btn-success btn-action" data-action="sumar" th:data-id="${p.id}">➕ Sumar stock</button>
                 <button type="button" class="btn btn-warning btn-action" data-action="restar" th:data-id="${p.id}">➖ Restar stock (vender)</button>
-                <a th:href="@{/home}" class="btn btn-outline-secondary btn-action">Volver al listado</a>
+                <a th:href="@{/productos}" class="btn btn-outline-secondary btn-action">Volver al listado</a>
             </div>
         </div>
     </main>

@@ -1,5 +1,7 @@
 package com.kiosco.Delcole.controller;
 
+import java.util.List;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +20,14 @@ public class ProductoWebController {
 
     private final ProductoService productoService;
 
+    @GetMapping
+    public String listar(Model model) {
+        List<Producto> productos = productoService.listarActivos();
+        model.addAttribute("productos", productos);
+        model.addAttribute("titulo", "Productos");
+        return "producto-listado";
+    }
+
     @GetMapping("/nuevo")
     public String formularioNuevo(Model model) {
         model.addAttribute("producto", new Producto());
@@ -33,6 +43,6 @@ public class ProductoWebController {
                     model.addAttribute("titulo", p.getNombre());
                     return "producto-detalle";
                 })
-                .orElse("redirect:/home");
+                .orElse("redirect:/stock");
     }
 }
