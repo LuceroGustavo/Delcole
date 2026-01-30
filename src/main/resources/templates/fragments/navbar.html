@@ -1,22 +1,47 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Navbar fragment</title>
+    <!-- Fuentes usadas por el navbar (cargar en página que use el fragmento o en app.css) -->
+</head>
 <body>
-    <nav th:fragment="nav" class="navbar navbar-expand navbar-dark navbar-delcole">
-        <div class="container-fluid">
-            <a th:href="@{/}" class="navbar-brand d-flex align-items-center">
-                <img th:src="@{/img/logo sin fondo.png}" alt="Kiosco Delcole" class="logo-img" />
-                <span class="d-none d-sm-inline ms-1">Delcole</span>
+    <!-- Navbar unificado: mismo estilo que el index (logo + Del Cole + acciones + usuario con dropdown) -->
+    <header th:fragment="nav" class="nav-unificado">
+        <div class="nav-unificado-brand">
+            <a th:href="@{/}" class="nav-unificado-brand-link">
+                <div class="nav-unificado-logo">
+                    <img th:src="@{/img/logo sin fondo.png}" alt="Del Cole" />
+                </div>
+                <div class="nav-unificado-titles">
+                    <h1 class="nav-unificado-title">Del Cole</h1>
+                    <p class="nav-unificado-subtitle">Gestión de Kiosco</p>
+                </div>
             </a>
-            <div class="navbar-collapse justify-content-end">
-                <ul class="navbar-nav gap-1">
-                    <li class="nav-item"><a th:href="@{/}" class="nav-link">Inicio</a></li>
-                    <li class="nav-item"><a th:href="@{/vender}" class="nav-link">Vender</a></li>
-                    <li class="nav-item"><a th:href="@{/stock}" class="nav-link">Stock</a></li>
-                    <li class="nav-item"><a th:href="@{/caja}" class="nav-link">Caja</a></li>
-                    <li class="nav-item"><a th:href="@{/finanzas}" class="nav-link">Finanzas</a></li>
+        </div>
+        <div class="nav-unificado-actions">
+            <button type="button" class="nav-unificado-btn" title="Notificaciones" aria-label="Notificaciones">
+                <span class="material-symbols-outlined">notifications</span>
+            </button>
+            <a th:if="${isAdmin}" th:href="@{/admin}" class="nav-unificado-btn" title="Administración" aria-label="Administración">
+                <span class="material-symbols-outlined">settings</span>
+            </a>
+            <div th:if="${usuarioLogueado}" class="dropdown">
+                <button class="nav-unificado-btn nav-unificado-user" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Usuario" title="Usuario">
+                    <span class="nav-unificado-inicial" th:text="${#strings.toUpperCase(#strings.substring(usuarioLogueado, 0, 1))}">A</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><span class="dropdown-item-text fw-semibold" th:text="${usuarioLogueado}">admin</span></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form th:action="@{/logout}" method="post">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                            <button type="submit" class="dropdown-item text-danger">Cerrar sesión</button>
+                        </form>
+                    </li>
                 </ul>
             </div>
         </div>
-    </nav>
+    </header>
 </body>
 </html>
