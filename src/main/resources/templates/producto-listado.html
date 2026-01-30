@@ -26,17 +26,27 @@
             color: #fff;
         }
         #scannerViewportListado { width: 100%; max-height: 50vh; }
+        .fila-producto { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0; border-bottom: 1px solid rgba(0,0,0,.08); flex-wrap: wrap; }
+        .fila-producto .nombre-producto { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+        .fila-producto .precio-producto { color: var(--delcole-success, #198754); font-weight: 700; white-space: nowrap; }
+        .fila-producto .stock-producto { font-weight: 500; min-width: 2rem; text-align: right; }
+        .fila-producto .stock-producto.bajo { color: #dc3545; font-weight: 700; }
+        .fila-producto .acciones { display: flex; gap: 0.35rem; flex-shrink: 0; }
+        @media (min-width: 768px) {
+            .fila-producto .nombre-producto { font-size: 1rem; }
+        }
     </style>
 </head>
 <body class="bg-light">
     <div th:replace="~{fragments/navbar :: nav}"></div>
     <main class="container mt-4">
-        <a th:href="@{/stock}" class="btn btn-link btn-sm text-muted text-decoration-none p-0 mb-2">← Stock</a>
+        <a th:href="@{/}" class="btn btn-link btn-sm text-muted text-decoration-none p-0 mb-2">← Inicio</a>
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4>Listado de productos</h4>
-            <a th:href="@{/productos/nuevo}" class="btn btn-success">➕ Nuevo</a>
+            <h4>Stock</h4>
+            <a th:href="@{/productos/nuevo}" class="btn btn-success btn-sm">➕ Nuevo</a>
         </div>
 
+        <input type="hidden" id="csrfTokenListado" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
         <!-- Búsqueda y filtros -->
         <form id="formFiltrosProductos" th:action="@{/productos}" method="get" class="card card-body mb-4">
             <div class="row g-2 align-items-end">
@@ -85,20 +95,23 @@
         </div>
         <div th:if="${!#lists.isEmpty(productos)}" th:unless="${codigoNoEncontrado}" class="alert alert-secondary py-2 small" th:text="'Mostrando ' + ${#lists.size(productos)} + ' producto(s).'">Mostrando N productos.</div>
         
-        <ul class="list-group" th:if="${!#lists.isEmpty(productos)}">
-            <li th:each="p : ${productos}" class="list-group-item d-flex justify-content-between align-items-center">
-                <div class="flex-grow-1">
-                    <strong th:text="${p.nombre}">Nombre</strong>
-                    <span th:if="${p.codigoBarra}" class="text-muted small ms-2" th:text="'(' + ${p.codigoBarra} + ')'">(código)</span>
-                    <span th:if="${p.marca}" class="text-muted small ms-2" th:text="' · ' + ${p.marca}">· Marca</span>
-                    <span th:if="${p.rubro}" class="badge bg-secondary ms-1" th:text="${p.rubro}">Rubro</span>
-                    <br>
-                    <span class="text-success fw-bold" th:text="'$ ' + ${p.precioVenta}">$ 0</span>
-                    <span class="text-muted ms-2">Stock: </span>
-                    <span th:text="${p.stockActual}" th:classappend="${p.stockBajo} ? 'text-danger fw-bold' : ''">0</span>
-                    <span th:if="${p.stockBajo}" class="badge bg-danger ms-2">Stock bajo</span>
+        <ul class="list-group list-group-flush" th:if="${!#lists.isEmpty(productos)}">
+            <li th:each="p : ${productos}" class="list-group-item px-0">
+                <div class="fila-producto">
+                    <span class="nombre-producto" th:text="${p.nombre}">Nombre</span>
+                    <span class="precio-producto" th:text="'$ ' + ${p.precioVenta}">$ 0</span>
+                    <span class="stock-producto" th:classappend="${p.stockBajo} ? 'bajo' : ''" th:text="${p.stockActual}">0</span>
+                    <span th:if="${p.stockBajo}" class="badge bg-danger">Bajo</span>
+                    <div class="acciones">
+                        <a th:href="@{/productos/{id}(id=${p.id})}" class="btn btn-sm btn-outline-primary">Ver</a>
+                        <button type="button" class="btn btn-sm btn-success btn-agregar-stock" th:data-id="${p.id}" th:data-nombre="${p.nombre}">+ Stock</button>
+                    </div>
                 </div>
-                <a th:href="@{/productos/{id}(id=${p.id})}" class="btn btn-sm btn-outline-primary">Ver</a>
+                <div class="d-none d-md-block small text-muted mt-0 pt-0">
+                    <span th:if="${p.codigoBarra}" th:text="'(' + ${p.codigoBarra} + ')'">(código)</span>
+                    <span class="ms-1" th:text="${(p.marca != null and !#strings.isEmpty(p.marca)) ? (' · ' + p.marca) : ' · Sin marca'}">· Marca</span>
+                    <span class="badge bg-secondary ms-1" th:text="${(p.rubro != null and !#strings.isEmpty(p.rubro)) ? p.rubro : 'Sin rubro'}">Rubro</span>
+                </div>
             </li>
         </ul>
     </main>
@@ -188,6 +201,22 @@
             if (btnCerrar) btnCerrar.addEventListener('click', detenerScanner);
             if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) detenerScanner(); });
         })();
+        document.querySelectorAll('.btn-agregar-stock').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.getAttribute('data-id');
+                var nombre = this.getAttribute('data-nombre') || 'Producto';
+                var cant = prompt('¿Cuántas unidades sumar a \"' + nombre + '\"?', '1');
+                if (cant == null || cant === '') return;
+                var n = parseInt(cant, 10);
+                if (isNaN(n) || n < 1) { alert('Ingresá un número positivo.'); return; }
+                var csrf = document.getElementById('csrfTokenListado');
+                var headers = { 'Content-Type': 'application/json' };
+                if (csrf && csrf.value) headers['X-CSRF-TOKEN'] = csrf.value;
+                fetch('/api/productos/' + id + '/stock/sumar', { method: 'POST', headers: headers, body: JSON.stringify({ cantidad: n }) })
+                    .then(function(r) { if (r.ok) location.reload(); else return r.json().then(function(e) { alert(e.error || 'Error'); }); })
+                    .catch(function() { alert('Error de conexión.'); });
+            });
+        });
     </script>
 </body>
 </html>

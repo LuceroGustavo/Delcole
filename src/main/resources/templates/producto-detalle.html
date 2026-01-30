@@ -13,12 +13,12 @@
 <body class="bg-light">
     <div th:replace="~{fragments/navbar :: nav}"></div>
     <main class="container">
-        <a th:href="@{/productos}" class="btn btn-link btn-sm text-muted text-decoration-none p-0 mb-2">← Volver a productos</a>
+        <a th:href="@{/productos}" class="btn btn-link btn-sm text-muted text-decoration-none p-0 mb-2">← Volver a Stock</a>
         <div th:with="p=${producto}">
             <h4 th:text="${p.nombre}">Nombre</h4>
             <p th:if="${p.codigoBarra}" class="text-muted mb-1" th:text="'Código: ' + ${p.codigoBarra}">Código</p>
-            <p th:if="${p.marca}" class="text-muted mb-1" th:text="'Marca: ' + ${p.marca}">Marca</p>
-            <p th:if="${p.rubro}" class="text-muted mb-1" th:text="'Rubro: ' + ${p.rubro}">Rubro</p>
+            <p class="text-muted mb-1">Marca: <span th:text="${(p.marca != null and !#strings.isEmpty(p.marca)) ? p.marca : 'Sin marca'}">—</span></p>
+            <p class="text-muted mb-1">Rubro: <span th:text="${(p.rubro != null and !#strings.isEmpty(p.rubro)) ? p.rubro : 'Sin rubro'}">—</span></p>
             <div class="card mb-4">
                 <div class="card-body">
                     <p class="mb-1"><strong>Precio de venta:</strong> <span class="text-success fs-4" th:text="'$ ' + ${p.precioVenta}">$ 0</span></p>
@@ -28,24 +28,21 @@
             </div>
             <div class="d-grid gap-2">
                 <a th:href="@{/productos/{id}/editar(id=${p.id})}" class="btn btn-primary btn-action">✏️ Editar</a>
-                <button type="button" class="btn btn-success btn-action" data-action="sumar" th:data-id="${p.id}">➕ Sumar stock</button>
-                <button type="button" class="btn btn-warning btn-action" data-action="restar" th:data-id="${p.id}">➖ Restar stock (vender)</button>
+                <button type="button" class="btn btn-success btn-action" data-action="sumar" th:data-id="${p.id}">➕ Agregar stock</button>
                 <a th:href="@{/productos}" class="btn btn-outline-secondary btn-action">Volver al listado</a>
             </div>
         </div>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script th:inline="javascript">
-        document.querySelectorAll('[data-action]').forEach(function(btn) {
+        document.querySelectorAll('[data-action="sumar"]').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const id = this.getAttribute('data-id');
-                const action = this.getAttribute('data-action');
-                const cantidad = prompt(action === 'sumar' ? '¿Cuántas unidades sumar?' : '¿Cuántas unidades vender?', '1');
+                const cantidad = prompt('¿Cuántas unidades agregar?', '1');
                 if (cantidad == null || cantidad === '') return;
-                const n = parseInt(cantidad);
+                const n = parseInt(cantidad, 10);
                 if (isNaN(n) || n < 1) { alert('Ingresá un número positivo.'); return; }
-                const url = action === 'sumar' ? '/api/productos/' + id + '/stock/sumar' : '/api/productos/' + id + '/stock/restar';
-                fetch(url, {
+                fetch('/api/productos/' + id + '/stock/sumar', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ cantidad: n })

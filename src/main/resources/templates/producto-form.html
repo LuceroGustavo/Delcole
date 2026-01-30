@@ -95,6 +95,13 @@
                 <button type="submit" class="btn btn-success btn-lg">Guardar</button>
             </div>
         </form>
+        <section th:if="${producto.id != null}" class="card border-warning mt-4">
+            <div class="card-body">
+                <h6 class="card-title text-muted">Baja de stock</h6>
+                <p class="small text-muted mb-2">Restar stock (venta o salida). Solo disponible al editar el producto.</p>
+                <button type="button" class="btn btn-warning" id="btnRestarStock" th:data-id="${producto.id}" th:data-nombre="${producto.nombre}">➖ Restar stock (vender)</button>
+            </div>
+        </section>
     </main>
 
     <!-- Overlay escáner para código de barras -->
@@ -314,6 +321,27 @@
         scannerOverlay.addEventListener('click', function(e) {
             if (e.target === scannerOverlay) detenerScanner();
         });
+
+        var btnRestarStock = document.getElementById('btnRestarStock');
+        if (btnRestarStock) {
+            btnRestarStock.addEventListener('click', function() {
+                var id = this.getAttribute('data-id');
+                var nombre = this.getAttribute('data-nombre') || 'Producto';
+                var cant = prompt('¿Cuántas unidades restar (vender) de \"' + nombre + '\"?', '1');
+                if (cant == null || cant === '') return;
+                var n = parseInt(cant, 10);
+                if (isNaN(n) || n < 1) { alert('Ingresá un número positivo.'); return; }
+                var csrf = document.getElementById('csrfToken');
+                var headers = { 'Content-Type': 'application/json' };
+                if (csrf && csrf.value) headers['X-CSRF-TOKEN'] = csrf.value;
+                fetch('/api/productos/' + id + '/stock/restar', { method: 'POST', headers: headers, body: JSON.stringify({ cantidad: n }) })
+                    .then(function(r) {
+                        if (r.ok) location.reload();
+                        else return r.json().then(function(e) { alert(e.error || e.message || 'Error'); });
+                    })
+                    .catch(function() { alert('Error de conexión.'); });
+            });
+        }
     </script>
 </body>
 </html>

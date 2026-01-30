@@ -16,6 +16,11 @@
     <div th:replace="~{fragments/navbar :: nav}"></div>
     <main class="container py-4">
         <a th:href="@{/}" class="btn btn-link text-muted text-decoration-none p-0 mb-3">← Volver al inicio</a>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a th:href="@{/marcas-rubros}" class="btn btn-outline-secondary btn-sm">
+                <span class="material-symbols-outlined align-middle" style="font-size: 1rem;">category</span> Marcas y Rubros
+            </a>
+        </div>
         <h4 class="mb-4">⚙️ Administración</h4>
 
         <!-- Cambiar contraseña -->

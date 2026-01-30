@@ -22,10 +22,10 @@ public class HomeController {
         return "vender";
     }
 
+    /** Stock muestra directamente el listado de productos (sin pantalla intermedia). */
     @GetMapping("/stock")
-    public String stock(Model model) {
-        model.addAttribute("titulo", "Stock");
-        return "stock";
+    public String stock() {
+        return "redirect:/productos";
     }
 
     @GetMapping("/caja")

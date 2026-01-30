@@ -55,7 +55,7 @@ public class ProductoWebController {
         model.addAttribute("filtroRubro", rubro != null ? rubro : "");
         model.addAttribute("filtroSoloStockBajo", Boolean.TRUE.equals(soloStockBajo));
         model.addAttribute("filtrosAplicados", filtrosAplicados);
-        model.addAttribute("titulo", "Productos");
+        model.addAttribute("titulo", "Stock");
         return "producto-listado";
     }
 
@@ -85,6 +85,6 @@ public class ProductoWebController {
                     model.addAttribute("titulo", p.getNombre());
                     return "producto-detalle";
                 })
-                .orElse("redirect:/stock");
+                .orElse("redirect:/productos");
     }
 }

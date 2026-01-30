@@ -2,6 +2,7 @@ package com.kiosco.Delcole.repository;
 
 import com.kiosco.Delcole.model.Producto;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,4 +31,20 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
            "ORDER BY p.nombre")
     List<Producto> findConFiltros(@Param("nombre") String nombre, @Param("marca") String marca,
                                   @Param("rubro") String rubro, @Param("soloStockBajo") Boolean soloStockBajo);
+
+    @Modifying
+    @Query("UPDATE Producto p SET p.marca = :nueva WHERE p.marca = :vieja")
+    int actualizarMarcaEnProductos(@Param("vieja") String vieja, @Param("nueva") String nueva);
+
+    @Modifying
+    @Query("UPDATE Producto p SET p.rubro = :nuevo WHERE p.rubro = :viejo")
+    int actualizarRubroEnProductos(@Param("viejo") String viejo, @Param("nuevo") String nuevo);
+
+    @Modifying
+    @Query("UPDATE Producto p SET p.marca = null WHERE p.marca = :marca")
+    int quitarMarcaEnProductos(@Param("marca") String marca);
+
+    @Modifying
+    @Query("UPDATE Producto p SET p.rubro = null WHERE p.rubro = :rubro")
+    int quitarRubroEnProductos(@Param("rubro") String rubro);
 }
