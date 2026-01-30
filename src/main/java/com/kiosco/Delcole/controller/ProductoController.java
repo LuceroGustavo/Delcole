@@ -26,6 +26,18 @@ public class ProductoController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /** Listar marcas distintas (para menú desplegable). */
+    @GetMapping("/marcas")
+    public List<String> listarMarcas() {
+        return productoService.listarMarcas();
+    }
+
+    /** Listar rubros distintos (para menú desplegable). */
+    @GetMapping("/rubros")
+    public List<String> listarRubros() {
+        return productoService.listarRubros();
+    }
+
     /** Obtener un producto por ID. */
     @GetMapping("/{id}")
     public ResponseEntity<Producto> porId(@PathVariable Long id) {

@@ -2,73 +2,272 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${titulo} + ' - Kiosco Delcole'">Inicio - Kiosco Delcole</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Inicio - Kiosco Delcole</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet">
+    <link th:href="@{/css/app.css}" rel="stylesheet">
     <style>
-        .btn-menu {
-            min-height: 120px;
-            font-size: 1.3rem;
-            font-weight: 600;
-            border-radius: 12px;
+        :root {
+            --primary: #13ecda;
+            --primary-dark: #0eb8aa;
+            --bg-light: #f6f8f8;
+            --text-dark: #111817;
+        }
+        html, body { height: 100%; margin: 0; }
+        body {
+            font-family: 'Manrope', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            display: flex;
+            flex-direction: column;
+            min-height: 100dvh;
+        }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+        /* Header estilo referencia */
+        .home-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1rem 1rem;
+            background: #fff;
+            border-bottom: 1px solid rgba(0,0,0,.06);
+        }
+        .home-header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .home-logo-wrap {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: rgba(19, 236, 218, 0.2);
+            border: 2px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .home-logo-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .home-header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1.2;
+            color: var(--text-dark);
+        }
+        .home-header .subtitle {
+            font-size: 0.75rem;
+            color: #6b7280;
+            font-weight: 500;
+            margin-top: 0.1rem;
+        }
+        .home-header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .home-header-actions .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--bg-light);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dark);
+            padding: 0;
+        }
+        .home-header-actions .btn-icon .material-symbols-outlined { font-size: 24px; }
+
+        /* Grid 2x2 estilo referencia */
+        .home-main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            min-height: 0;
+        }
+        @media (min-width: 576px) {
+            .home-main { max-width: 480px; margin: 0 auto; width: 100%; }
+        }
+        .home-btn {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            padding: 1.5rem;
-        }
-        .btn-menu-icon {
-            font-size: 2.5rem;
-        }
-        body {
-            padding-bottom: 2rem;
-            background-color: #f8f9fa;
-        }
-        .main-menu {
-            max-width: 600px;
-            margin: 0 auto;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: #fff !important;
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: 0.02em;
+            border-radius: 1rem;
+            border: none;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,.12);
+            transition: transform .1s ease, box-shadow .15s ease;
+            min-height: 0;
             padding: 1rem;
         }
-        .navbar-brand {
-            font-size: 1.5rem;
-            font-weight: 600;
+        .home-btn:active { transform: scale(0.98); }
+        .home-btn:hover { color: #fff !important; box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+        .home-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,.05);
+            opacity: 0;
+            transition: opacity .15s;
         }
+        .home-btn:active::before { opacity: 1; }
+        .home-btn-inner {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .home-btn-icon-wrap {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.25);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .home-btn-icon-wrap .material-symbols-outlined {
+            font-size: 48px;
+            font-variation-settings: 'FILL' 1;
+            color: #fff;
+        }
+        .home-btn-vender { background: linear-gradient(135deg, #34d399 0%, #059669 100%); }
+        .home-btn-stock { background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%); }
+        .home-btn-caja { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
+        .home-btn-finanzas { background: linear-gradient(135deg, var(--primary) 0%, #0d9488 100%); }
+
+        /* Bottom nav estilo referencia */
+        .home-bottom-nav {
+            display: flex;
+            gap: 0.25rem;
+            padding: 0.5rem 1rem 1.5rem;
+            background: #fff;
+            border-top: 1px solid rgba(0,0,0,.06);
+        }
+        .home-bottom-nav a {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            text-decoration: none;
+            color: #9ca3af;
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.25rem 0;
+        }
+        .home-bottom-nav a:hover { color: var(--primary); }
+        .home-bottom-nav a.active { color: var(--primary); font-weight: 700; }
+        .home-bottom-nav a .material-symbols-outlined { font-size: 28px; }
+        .home-bottom-nav a.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
     </style>
 </head>
-<body class="bg-light">
-    <nav class="navbar navbar-dark bg-primary">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">Kiosco Delcole</span>
+<body>
+    <!-- Header estilo referencia (logo + título + acciones) -->
+    <header class="home-header">
+        <div class="home-header-brand">
+            <div class="home-logo-wrap">
+                <img th:src="@{/img/logo sin fondo.png}" alt="Del Cole" />
+            </div>
+            <div>
+                <h1>Del Cole</h1>
+                <p class="subtitle">Gestión de Kiosco</p>
+            </div>
         </div>
-    </nav>
-    <main class="main-menu">
-        <div class="d-grid gap-4 mt-4">
-            <!-- Botón 1: Vender -->
-            <a th:href="@{/vender}" class="btn btn-success btn-menu">
-                <span class="btn-menu-icon">🛒</span>
+        <div class="home-header-actions">
+            <button type="button" class="btn-icon" title="Notificaciones" aria-label="Notificaciones">
+                <span class="material-symbols-outlined">notifications</span>
+            </button>
+            <button type="button" class="btn-icon" title="Ajustes" aria-label="Ajustes">
+                <span class="material-symbols-outlined">settings</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Grid 2x2 -->
+    <main class="home-main">
+        <a th:href="@{/vender}" class="home-btn home-btn-vender">
+            <div class="home-btn-inner">
+                <div class="home-btn-icon-wrap">
+                    <span class="material-symbols-outlined">shopping_cart</span>
+                </div>
                 <span>Vender</span>
-            </a>
-            
-            <!-- Botón 2: Stock -->
-            <a th:href="@{/stock}" class="btn btn-primary btn-menu">
-                <span class="btn-menu-icon">📦</span>
+            </div>
+        </a>
+        <a th:href="@{/stock}" class="home-btn home-btn-stock">
+            <div class="home-btn-inner">
+                <div class="home-btn-icon-wrap">
+                    <span class="material-symbols-outlined">inventory_2</span>
+                </div>
                 <span>Stock</span>
-            </a>
-            
-            <!-- Botón 3: Cierre de caja -->
-            <a th:href="@{/caja}" class="btn btn-warning btn-menu text-dark">
-                <span class="btn-menu-icon">💰</span>
-                <span>Cierre de caja</span>
-            </a>
-            
-            <!-- Botón 4: Finanzas -->
-            <a th:href="@{/finanzas}" class="btn btn-info btn-menu text-dark">
-                <span class="btn-menu-icon">📊</span>
+            </div>
+        </a>
+        <a th:href="@{/caja}" class="home-btn home-btn-caja">
+            <div class="home-btn-inner">
+                <div class="home-btn-icon-wrap">
+                    <span class="material-symbols-outlined">payments</span>
+                </div>
+                <span>Caja</span>
+            </div>
+        </a>
+        <a th:href="@{/finanzas}" class="home-btn home-btn-finanzas">
+            <div class="home-btn-inner">
+                <div class="home-btn-icon-wrap">
+                    <span class="material-symbols-outlined">query_stats</span>
+                </div>
                 <span>Finanzas</span>
-            </a>
-        </div>
+            </div>
+        </a>
     </main>
+
+    <!-- Bottom nav -->
+    <nav class="home-bottom-nav">
+        <a th:href="@{/}" class="active">
+            <span class="material-symbols-outlined">home</span>
+            <span>Inicio</span>
+        </a>
+        <a th:href="@{/vender}">
+            <span class="material-symbols-outlined">shopping_cart</span>
+            <span>Vender</span>
+        </a>
+        <a th:href="@{/stock}">
+            <span class="material-symbols-outlined">inventory_2</span>
+            <span>Stock</span>
+        </a>
+        <a th:href="@{/caja}">
+            <span class="material-symbols-outlined">payments</span>
+            <span>Caja</span>
+        </a>
+        <a th:href="@{/finanzas}">
+            <span class="material-symbols-outlined">query_stats</span>
+            <span>Finanzas</span>
+        </a>
+    </nav>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

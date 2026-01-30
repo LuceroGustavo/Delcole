@@ -5,38 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${titulo} + ' - Kiosco Delcole'">Productos - Kiosco Delcole</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link th:href="@{/css/app.css}" rel="stylesheet">
     <style>
-        body {
-            padding-bottom: 2rem;
-            background-color: #f8f9fa;
+        .scanner-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1050;
         }
-        .navbar-brand {
-            font-size: 1.5rem;
-            font-weight: 600;
+        .scanner-overlay.activo { display: flex; }
+        .scanner-modal {
+            background: #000;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 100%;
+            padding: 0.5rem;
+            color: #fff;
         }
+        #scannerViewportListado { width: 100%; max-height: 50vh; }
     </style>
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a th:href="@{/stock}" class="navbar-brand mb-0 h1">← Stock</a>
-        </div>
-    </nav>
+    <div th:replace="~{fragments/navbar :: nav}"></div>
     <main class="container mt-4">
+        <a th:href="@{/stock}" class="btn btn-link btn-sm text-muted text-decoration-none p-0 mb-2">← Stock</a>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h4>Listado de productos</h4>
             <a th:href="@{/productos/nuevo}" class="btn btn-success">➕ Nuevo</a>
         </div>
+
+        <!-- Búsqueda y filtros -->
+        <form id="formFiltrosProductos" th:action="@{/productos}" method="get" class="card card-body mb-4">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md">
+                    <label class="form-label small mb-0">Nombre</label>
+                    <input type="text" name="nombre" class="form-control" th:value="${filtroNombre}" placeholder="Buscar por nombre...">
+                </div>
+                <div class="col-12 col-md">
+                    <label class="form-label small mb-0">Código de barras</label>
+                    <div class="input-group">
+                        <input type="text" name="codigoBarra" id="inputCodigoBarraListado" class="form-control" th:value="${codigoNoEncontrado}" placeholder="Escanear o pegar código">
+                        <button type="button" id="btnEscanearListado" class="btn btn-outline-primary" title="Escanear código de barras">📷 Escanear</button>
+                    </div>
+                </div>
+                <div class="col-6 col-md">
+                    <label class="form-label small mb-0">Marca</label>
+                    <select name="marca" class="form-select">
+                        <option value="">Todas</option>
+                        <option th:each="m : ${marcas}" th:value="${m}" th:text="${m}" th:selected="${m == filtroMarca}"></option>
+                    </select>
+                </div>
+                <div class="col-6 col-md">
+                    <label class="form-label small mb-0">Rubro</label>
+                    <select name="rubro" class="form-select">
+                        <option value="">Todos</option>
+                        <option th:each="r : ${rubros}" th:value="${r}" th:text="${r}" th:selected="${r == filtroRubro}"></option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <div class="form-check mb-0">
+                        <input type="checkbox" name="soloStockBajo" value="true" class="form-check-input" id="cbStockBajo" th:checked="${filtroSoloStockBajo}">
+                        <label class="form-check-label small" for="cbStockBajo">Solo stock bajo</label>
+                    </div>
+                </div>
+                <div class="col-12 col-md-auto d-flex gap-1">
+                    <button type="submit" class="btn btn-primary">Buscar</button>
+                    <a th:href="@{/productos}" class="btn btn-outline-secondary">Limpiar</a>
+                </div>
+            </div>
+            <p th:if="${codigoNoEncontrado}" class="text-danger small mb-0 mt-2">Código "<span th:text="${codigoNoEncontrado}"></span>" no encontrado.</p>
+        </form>
         
         <div th:if="${#lists.isEmpty(productos)}" class="alert alert-info">
-            No hay productos cargados. <a th:href="@{/productos/nuevo}">Agregá uno</a>.
+            <span th:if="${filtrosAplicados}">Ningún producto coincide con los filtros.</span>
+            <span th:unless="${filtrosAplicados}">No hay productos cargados. <a th:href="@{/productos/nuevo}">Agregá uno</a>.</span>
         </div>
+        <div th:if="${!#lists.isEmpty(productos)}" th:unless="${codigoNoEncontrado}" class="alert alert-secondary py-2 small" th:text="'Mostrando ' + ${#lists.size(productos)} + ' producto(s).'">Mostrando N productos.</div>
         
         <ul class="list-group" th:if="${!#lists.isEmpty(productos)}">
             <li th:each="p : ${productos}" class="list-group-item d-flex justify-content-between align-items-center">
                 <div class="flex-grow-1">
                     <strong th:text="${p.nombre}">Nombre</strong>
                     <span th:if="${p.codigoBarra}" class="text-muted small ms-2" th:text="'(' + ${p.codigoBarra} + ')'">(código)</span>
+                    <span th:if="${p.marca}" class="text-muted small ms-2" th:text="' · ' + ${p.marca}">· Marca</span>
+                    <span th:if="${p.rubro}" class="badge bg-secondary ms-1" th:text="${p.rubro}">Rubro</span>
                     <br>
                     <span class="text-success fw-bold" th:text="'$ ' + ${p.precioVenta}">$ 0</span>
                     <span class="text-muted ms-2">Stock: </span>
@@ -47,6 +102,92 @@
             </li>
         </ul>
     </main>
+
+    <!-- Overlay escáner para código de barras en listado -->
+    <div id="scannerOverlayListado" class="scanner-overlay">
+        <div class="scanner-modal">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold">Escanear código de barras</span>
+                <button type="button" id="btnCerrarScannerListado" class="btn btn-sm btn-light">Cerrar</button>
+            </div>
+            <div id="scannerMensajeListado" class="small mb-1" style="min-height: 1.2em;"></div>
+            <div id="scannerViewportListado"></div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.js"></script>
+    <script>
+        (function() {
+            var formFiltros = document.getElementById('formFiltrosProductos');
+            var inputCodigo = document.getElementById('inputCodigoBarraListado');
+            var btnEscanear = document.getElementById('btnEscanearListado');
+            var overlay = document.getElementById('scannerOverlayListado');
+            var btnCerrar = document.getElementById('btnCerrarScannerListado');
+            var viewport = document.getElementById('scannerViewportListado');
+            var mensaje = document.getElementById('scannerMensajeListado');
+            var scannerActivo = false;
+
+            function detenerScanner() {
+                if (window.Quagga && scannerActivo) {
+                    window.Quagga.stop();
+                    scannerActivo = false;
+                }
+                if (overlay) overlay.classList.remove('activo');
+            }
+
+            function iniciarScanner() {
+                if (!window.Quagga) {
+                    alert('No se pudo cargar el lector de códigos. Usá HTTPS o localhost.');
+                    return;
+                }
+                if (overlay) overlay.classList.add('activo');
+                if (mensaje) mensaje.textContent = '';
+                window.Quagga.init({
+                    inputStream: {
+                        type: 'LiveStream',
+                        target: viewport,
+                        constraints: { facingMode: 'environment', width: { ideal: 1280, min: 640 }, height: { ideal: 720, min: 480 } }
+                    },
+                    decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader', 'code_128_reader'], multiple: false },
+                    locate: true,
+                    numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
+                    frequency: 20
+                }, function(err) {
+                    if (err) {
+                        if (mensaje) mensaje.textContent = 'No se pudo iniciar la cámara.';
+                        detenerScanner();
+                        return;
+                    }
+                    window.Quagga.start();
+                    scannerActivo = true;
+                });
+                var ultimoCodigo = null;
+                window.Quagga.offDetected();
+                window.Quagga.onDetected(function(result) {
+                    if (!result || !result.codeResult || !result.codeResult.code) return;
+                    var codigo = String(result.codeResult.code).trim();
+                    if (!codigo || codigo === ultimoCodigo) return;
+                    ultimoCodigo = codigo;
+                    if (inputCodigo) inputCodigo.value = codigo;
+                    if (mensaje) { mensaje.textContent = 'Código: ' + codigo; mensaje.style.color = '#90EE90'; }
+                    detenerScanner();
+                    if (formFiltros) {
+                        formFiltros.querySelector('input[name="nombre"]').value = '';
+                        formFiltros.querySelector('select[name="marca"]').value = '';
+                        formFiltros.querySelector('select[name="rubro"]').value = '';
+                        var cb = formFiltros.querySelector('input[name="soloStockBajo"]');
+                        if (cb) cb.checked = false;
+                        formFiltros.submit();
+                    }
+                    setTimeout(function() { ultimoCodigo = null; }, 2000);
+                });
+            }
+
+            if (btnEscanear) btnEscanear.addEventListener('click', iniciarScanner);
+            if (btnCerrar) btnCerrar.addEventListener('click', detenerScanner);
+            if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) detenerScanner(); });
+        })();
+    </script>
 </body>
 </html>

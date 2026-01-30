@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <nav th:fragment="nav" class="navbar navbar-expand navbar-dark navbar-delcole">
+        <div class="container-fluid">
+            <a th:href="@{/}" class="navbar-brand d-flex align-items-center">
+                <img th:src="@{/img/logo sin fondo.png}" alt="Kiosco Delcole" class="logo-img" />
+                <span class="d-none d-sm-inline ms-1">Delcole</span>
+            </a>
+            <div class="navbar-collapse justify-content-end">
+                <ul class="navbar-nav gap-1">
+                    <li class="nav-item"><a th:href="@{/}" class="nav-link">Inicio</a></li>
+                    <li class="nav-item"><a th:href="@{/vender}" class="nav-link">Vender</a></li>
+                    <li class="nav-item"><a th:href="@{/stock}" class="nav-link">Stock</a></li>
+                    <li class="nav-item"><a th:href="@{/caja}" class="nav-link">Caja</a></li>
+                    <li class="nav-item"><a th:href="@{/finanzas}" class="nav-link">Finanzas</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</body>
+</html>

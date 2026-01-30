@@ -37,6 +37,22 @@ public class ProductoService {
         return productoRepository.findByNombreContainingIgnoreCaseAndActivoTrue(nombre.trim());
     }
 
+    public List<String> listarMarcas() {
+        return productoRepository.findDistinctMarcas();
+    }
+
+    public List<String> listarRubros() {
+        return productoRepository.findDistinctRubros();
+    }
+
+    /** Lista productos activos con filtros opcionales (nombre, marca, rubro, solo con stock bajo). */
+    public List<Producto> listarConFiltros(String nombre, String marca, String rubro, Boolean soloStockBajo) {
+        String n = (nombre != null && !nombre.isBlank()) ? nombre.trim() : null;
+        String m = (marca != null && !marca.isBlank()) ? marca.trim() : null;
+        String r = (rubro != null && !rubro.isBlank()) ? rubro.trim() : null;
+        return productoRepository.findConFiltros(n, m, r, Boolean.TRUE.equals(soloStockBajo) ? true : null);
+    }
+
     @Transactional
     public Producto guardar(Producto producto) {
         return productoRepository.save(producto);

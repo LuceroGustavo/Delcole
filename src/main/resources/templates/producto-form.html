@@ -28,14 +28,12 @@
     </style>
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-dark bg-primary mb-3">
-        <div class="container-fluid">
-            <a class="navbar-brand" th:href="@{/productos}">← Productos</a>
-        </div>
-    </nav>
+    <div th:replace="~{fragments/navbar :: nav}"></div>
     <main class="container">
+        <a th:href="@{/productos}" class="btn btn-link btn-sm text-muted text-decoration-none p-0 mb-2">← Volver a productos</a>
         <h4 class="mb-4" th:text="${titulo}">Agregar producto</h4>
         <form th:action="@{/api/productos}" th:object="${producto}" method="post" id="formProducto">
+            <input type="hidden" id="productoId" th:name="id" th:value="${producto.id}" />
             <div class="mb-3">
                 <label class="form-label">Código de barras (opcional)</label>
                 <div class="input-group">
@@ -45,12 +43,34 @@
                 <div class="form-text small">Si la cámara no lee bien, usá una app de escaneo y pegá el código acá.</div>
             </div>
             <div class="mb-3">
-                <label class="form-label">Nombre *</label>
-                <input type="text" class="form-control form-control-lg" th:field="*{nombre}" required placeholder="Nombre del producto">
+                <label class="form-label">Descripción / Nombre *</label>
+                <input type="text" class="form-control form-control-lg" th:field="*{nombre}" required placeholder="Ej: CEPITA NARANJA 1LT">
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Precio de compra</label>
+                    <label class="form-label">Marca</label>
+                    <select id="selectMarca" class="form-select form-control-lg" aria-label="Marca">
+                        <option value="">— Cargando... —</option>
+                    </select>
+                    <div id="wrapMarcaNueva" class="mt-1" style="display: none;">
+                        <input type="text" id="inputMarcaNueva" class="form-control form-control-lg" placeholder="Ej: COCA COLA">
+                    </div>
+                    <input type="hidden" name="marca" id="marca" th:value="${producto.marca}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Rubro</label>
+                    <select id="selectRubro" class="form-select form-control-lg" aria-label="Rubro">
+                        <option value="">— Cargando... —</option>
+                    </select>
+                    <div id="wrapRubroNueva" class="mt-1" style="display: none;">
+                        <input type="text" id="inputRubroNueva" class="form-control form-control-lg" placeholder="Ej: BEBIDAS, COMIDA">
+                    </div>
+                    <input type="hidden" name="rubro" id="rubro" th:value="${producto.rubro}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Costo (precio de compra)</label>
                     <input type="number" step="0.01" class="form-control form-control-lg" th:field="*{precioCompra}" placeholder="0.00">
                 </div>
                 <div class="col-md-6 mb-3">
@@ -60,11 +80,11 @@
             </div>
             <div class="row">
                 <div class="col-6 mb-3">
-                    <label class="form-label">Stock inicial</label>
+                    <label class="form-label">Stock</label>
                     <input type="number" class="form-control form-control-lg" th:field="*{stockActual}" min="0" placeholder="0">
                 </div>
                 <div class="col-6 mb-3">
-                    <label class="form-label">Stock mínimo (alerta)</label>
+                    <label class="form-label">Stock mín.</label>
                     <input type="number" class="form-control form-control-lg" th:field="*{stockMinimo}" min="0" placeholder="0">
                 </div>
             </div>
@@ -90,25 +110,129 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.js"></script>
     <script>
+        // --- Menús desplegables Marca y Rubro ---
+        const VALUE_NUEVA = '_nueva_';
+        const selectMarca = document.getElementById('selectMarca');
+        const selectRubro = document.getElementById('selectRubro');
+        const wrapMarcaNueva = document.getElementById('wrapMarcaNueva');
+        const wrapRubroNueva = document.getElementById('wrapRubroNueva');
+        const inputMarcaNueva = document.getElementById('inputMarcaNueva');
+        const inputRubroNueva = document.getElementById('inputRubroNueva');
+        const hiddenMarca = document.getElementById('marca');
+        const hiddenRubro = document.getElementById('rubro');
+
+        function setMarcaVal(v) { hiddenMarca.value = v || ''; }
+        function setRubroVal(v) { hiddenRubro.value = v || ''; }
+
+        function rellenarSelect(select, opciones, valorInicial, optNuevaLabel) {
+            select.innerHTML = '';
+            const vacio = document.createElement('option');
+            vacio.value = '';
+            vacio.textContent = '— Sin especificar —';
+            select.appendChild(vacio);
+            (opciones || []).forEach(function(m) {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                select.appendChild(opt);
+            });
+            const optNueva = document.createElement('option');
+            optNueva.value = VALUE_NUEVA;
+            optNueva.textContent = optNuevaLabel;
+            select.appendChild(optNueva);
+
+            var valor = (valorInicial || '').trim();
+            if (valor && !opciones.includes(valor)) {
+                var extra = document.createElement('option');
+                extra.value = valor;
+                extra.textContent = valor;
+                select.insertBefore(extra, optNueva);
+            }
+            if (valor) {
+                select.value = valor;
+            } else {
+                select.value = '';
+            }
+        }
+
+        function actualizarVisibilidadNueva(select, wrap, input, setVal) {
+            if (select.value === VALUE_NUEVA) {
+                wrap.style.display = 'block';
+                setVal(input.value || '');
+            } else {
+                wrap.style.display = 'none';
+                setVal(select.value || '');
+            }
+        }
+
+        Promise.all([
+            fetch('/api/productos/marcas').then(function(r) { return r.json(); }),
+            fetch('/api/productos/rubros').then(function(r) { return r.json(); })
+        ]).then(function(res) {
+            var marcas = res[0] || [];
+            var rubros = res[1] || [];
+            var marcaInicial = (hiddenMarca && hiddenMarca.value) ? hiddenMarca.value.trim() : '';
+            var rubroInicial = (hiddenRubro && hiddenRubro.value) ? hiddenRubro.value.trim() : '';
+
+            rellenarSelect(selectMarca, marcas, marcaInicial, '— Nueva marca... —');
+            rellenarSelect(selectRubro, rubros, rubroInicial, '— Nuevo rubro... —');
+
+            if (marcaInicial && !marcas.includes(marcaInicial)) {
+                selectMarca.value = marcaInicial;
+            }
+            if (rubroInicial && !rubros.includes(rubroInicial)) {
+                selectRubro.value = rubroInicial;
+            }
+
+            actualizarVisibilidadNueva(selectMarca, wrapMarcaNueva, inputMarcaNueva, setMarcaVal);
+            actualizarVisibilidadNueva(selectRubro, wrapRubroNueva, inputRubroNueva, setRubroVal);
+
+            if (selectMarca.value === VALUE_NUEVA) inputMarcaNueva.value = marcaInicial;
+            if (selectRubro.value === VALUE_NUEVA) inputRubroNueva.value = rubroInicial;
+        }).catch(function() {
+            selectMarca.innerHTML = '<option value="">— Error al cargar —</option><option value="' + VALUE_NUEVA + '">— Nueva marca... —</option>';
+            selectRubro.innerHTML = '<option value="">— Error al cargar —</option><option value="' + VALUE_NUEVA + '">— Nuevo rubro... —</option>';
+        });
+
+        selectMarca.addEventListener('change', function() {
+            actualizarVisibilidadNueva(selectMarca, wrapMarcaNueva, inputMarcaNueva, setMarcaVal);
+            if (selectMarca.value === VALUE_NUEVA) inputMarcaNueva.focus();
+        });
+        selectRubro.addEventListener('change', function() {
+            actualizarVisibilidadNueva(selectRubro, wrapRubroNueva, inputRubroNueva, setRubroVal);
+            if (selectRubro.value === VALUE_NUEVA) inputRubroNueva.focus();
+        });
+        inputMarcaNueva.addEventListener('input', function() { setMarcaVal(inputMarcaNueva.value); });
+        inputRubroNueva.addEventListener('input', function() { setRubroVal(inputRubroNueva.value); });
+
         document.getElementById('formProducto').addEventListener('submit', function(e) {
             e.preventDefault();
+            if (selectMarca.value === VALUE_NUEVA) setMarcaVal(inputMarcaNueva.value);
+            else setMarcaVal(selectMarca.value);
+            if (selectRubro.value === VALUE_NUEVA) setRubroVal(inputRubroNueva.value);
+            else setRubroVal(selectRubro.value);
+
             const form = e.target;
+            const idVal = form.productoId && form.productoId.value ? parseInt(form.productoId.value) : null;
             const data = {
                 codigoBarra: form.codigoBarra.value || null,
                 nombre: form.nombre.value,
+                marca: form.marca.value || null,
+                rubro: form.rubro.value || null,
                 precioCompra: form.precioCompra.value ? parseFloat(form.precioCompra.value) : null,
                 precioVenta: parseFloat(form.precioVenta.value) || 0,
                 stockActual: parseInt(form.stockActual.value) || 0,
                 stockMinimo: parseInt(form.stockMinimo.value) || 0,
                 activo: true
             };
+            if (idVal) data.id = idVal;
             fetch(form.action, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
             .then(r => r.ok ? r.json() : Promise.reject(r))
-            .then(() => { window.location.href = '/productos'; })
+            .then(() => { window.location.href = idVal ? '/productos/' + idVal : '/productos'; })
             .catch(() => alert('Error al guardar. Revisá los datos.'));
         });
 

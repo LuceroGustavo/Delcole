@@ -36,6 +36,12 @@ public class Producto {
     @Column(nullable = false, length = 200)
     private String nombre;
 
+    @Column(length = 100)
+    private String marca;
+
+    @Column(length = 100)
+    private String rubro;
+
     @Column(name = "precio_compra", precision = 10, scale = 2)
     private BigDecimal precioCompra;
 
